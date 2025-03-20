@@ -2,75 +2,26 @@ const { response } = require("express");
 const bcrypt = require("bcryptjs");
 const Usuario = require("../models/Usuario");
 const { generarJWT } = require("../helpers/jwt");
+const Evento = require("../models/Evento");
 
 //FUNCIONES EN LAS RUTAS
-const getEventos = async (req, res = response) => {
-  const { email, password } = req.body;
-
-  try {
-    let usuario = await Usuario.findOne({ email });
-
-    if (usuario) {
-      return res.status(400).json({
-        ok: false,
-        msg: "Ya existe un dato con ese Email",
-      });
-    }
-    usuario = new Usuario(req.body);
-
-    //ENCRIPTAR CONTRASEÑA
-    const salt = bcrypt.genSaltSync();
-    usuario.password = bcrypt.hashSync(password, salt);
-
-    await usuario.save();
-
-    //Generar JWT
-    const token = await generarJWT(usuario.id, usuario.name);
-
-    res.status(201).json({
-      ok: true,
-      uid: usuario.id,
-      name: usuario.name,
-      token,
-    });
-  } catch (error) {
-    console.log("ERROR", error);
-    res.status(500).json({
-      ok: false,
-      msg: "Hable con el admin",
-    });
-  }
+const getEvento = async (req, res = response) => {
+  const eventos = await Evento.find().populate("user", "name");
+  res.json({
+    ok: true,
+    eventos,
+  });
 };
 
-const crearEventos = async (req, res = response) => {
-  const { email, password } = req.body;
+const crearEvento = async (req, res = response) => {
+  const evento = new Evento(req.body);
   try {
-    let usuario = await Usuario.findOne({ email });
-
-    if (!usuario) {
-      return res.status(400).json({
-        ok: false,
-        msg: "El usuario no existe con ese email",
-      });
-    }
-
-    //CONFIRMAR LOS PASSWORD VALIDACION
-    const validPassword = bcrypt.compareSync(password, usuario.password);
-    if (!validPassword) {
-      return res.status(400).json({
-        ok: false,
-        msg: "Password incorrecta",
-      });
-    }
-    //Generar JWT
-    const token = await generarJWT(usuario.id, usuario.name);
-
-    //GENERAR NUESTRO JSON WEB TOKEN
+    evento.user = req.uid;
+    const eventoGuardado = await evento.save();
     res.status(201).json({
       ok: true,
-      uid: usuario.id,
-      name: usuario.name,
-      token,
+      evento: eventoGuardado,
+      message: "crearEvento",
     });
   } catch (error) {
     console.log("ERROR", error);
@@ -82,32 +33,86 @@ const crearEventos = async (req, res = response) => {
 };
 
 const actualizarEvento = async (req, res = response) => {
+  const eventoId = req.params.id;
   const uid = req.uid;
-  const name = req.name;
 
-  const token = await generarJWT(uid, name);
-  res.json({
-    ok: true,
-    msj: "Revalidar token",
-    token,
-  });
+  try {
+    const evento = await Evento.findById(eventoId);
+
+    if (!evento) {
+      return res.status(404).json({
+        ok: false,
+        msg: "Evento no existe por ese id",
+      });
+    }
+
+    if (evento.user.toString() !== uid) {
+      return res.status(401).json({
+        ok: false,
+        msg: "No tiene privilegio de editar este evento",
+      });
+    }
+
+    const nuevoEvento = {
+      ...req.body,
+      user: uid,
+    };
+
+    const eventoActualizado = await Evento.findByIdAndUpdate(
+      eventoId,
+      nuevoEvento,
+      { new: true }
+    );
+
+    res.json({
+      ok: true,
+      evento: eventoActualizado,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      ok: false,
+      msg: "Hable con el administrador",
+    });
+  }
 };
 
 const eliminarEvento = async (req, res = response) => {
+  const eventoId = req.params.id;
   const uid = req.uid;
-  const name = req.name;
 
-  const token = await generarJWT(uid, name);
-  res.json({
-    ok: true,
-    msj: "Revalidar token",
-    token,
-  });
+  try {
+    const evento = await Evento.findById(eventoId);
+
+    if (!evento) {
+      return res.status(404).json({
+        ok: false,
+        msg: "Evento no existe por ese id",
+      });
+    }
+
+    if (evento.user.toString() !== uid) {
+      return res.status(401).json({
+        ok: false,
+        msg: "No tiene privilegio de eliminar este evento",
+      });
+    }
+
+    await Evento.findByIdAndDelete(eventoId);
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      ok: false,
+      msg: "Hable con el administrador",
+    });
+  }
 };
 
 module.exports = {
-  getEventos,
-  crearEventos,
+  getEvento,
+  crearEvento,
   actualizarEvento,
   eliminarEvento,
 };
