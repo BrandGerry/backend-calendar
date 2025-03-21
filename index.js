@@ -22,4 +22,7 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/events", require("./routes/events"));
 
 //ESCUCHAR PETICIONES
-app.listen(process.env.PORT, console.log("SERVIDOR CORRIENDO"));
+app.listen(
+  process.env.PORT,
+  console.log(`SERVIDOR CORRIENDO EN ${process.env.PORT}`)
+);
