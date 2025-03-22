@@ -9,7 +9,11 @@ const app = express();
 //BASE DE DATOS
 dbConnection();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+  })
+);
 
 //DIRECTORIO PUBLICO
 app.use(express.static("public"));
