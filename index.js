@@ -1,3 +1,4 @@
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const { dbConnection } = require("./database/config");
@@ -24,7 +25,11 @@ app.use(express.json());
 //RUTAS
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/events", require("./routes/events"));
-
+//PARA QUE SE RENDERICE, UNA VEZ QUE EN MI FRONT END HICE EL BUILD Y
+//EN DIST TODO LO COPIO Y LO PEGO AQUI EN BACK EN PUBLIC
+app.use("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public/index.html"));
+});
 //ESCUCHAR PETICIONES
 app.listen(
   process.env.PORT,
